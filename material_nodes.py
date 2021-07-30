@@ -28,6 +28,7 @@ node_categories = [
     # identifier, label, items list
     #MyNodeCategory("SOMENODES", "PBRT", items=[
     MyNodeCategory("PBRT_SHADER", "PBRT", items=[
+        NodeItem("CustomNodeTypeCloth"),
         NodeItem("CustomNodeTypeMatte"),
         NodeItem("CustomNodeTypeMirror"),
         NodeItem("CustomNodeTypeGlass"),
@@ -90,6 +91,35 @@ class PbrtMatte(Node, MyCustomTreeNode):
     def draw_label(self):
         return "Pbrt Matte"
 
+class PbrtCloth(Node, MyCustomTreeNode):
+    '''A custom node'''
+    bl_idname = 'CustomNodeTypeCloth'
+    bl_label = 'Pbrt Cloth'
+    bl_icon = 'INFO'
+
+    def updateViewportColor(self,context):
+        mat = bpy.context.active_object.active_material
+        if mat is not None:
+            bpy.data.materials[mat.name].diffuse_color=self.Kd
+        
+    UScale: bpy.props.FloatProperty(default=1.0, min=1.0, max=100.0)
+    VScale: bpy.props.FloatProperty(default=1.0, min=1.0, max=100.0)
+    Kd : bpy.props.FloatVectorProperty(name="Kd", description="Kd",default=(0.8, 0.8, 0.8, 1.0), min=0, max=1, subtype='COLOR', size=4,update=updateViewportColor)
+    BTF : bpy.props.StringProperty(default="", maxlen=1024, subtype='DIR_PATH')
+    
+    def init(self, context):
+        self.outputs.new('NodeSocketFloat', "Pbrt Cloth")
+        KdTexture_node = self.inputs.new('NodeSocketColor', "Kd Texture")
+        KdTexture_node.hide_value = True
+
+    def draw_buttons(self, context, layout):
+        layout.prop(self, "UScale", text = 'U Scale')
+        layout.prop(self, "VScale", text = 'V Scale')
+        layout.prop(self, "Kd",text = 'Kd')
+        layout.prop(self, "BTF",text = 'BTF')
+        
+    def draw_label(self):
+        return "Pbrt Cloth"
 class PbrtMirror(Node, MyCustomTreeNode):
     bl_idname = 'CustomNodeTypeMirror'
     bl_label = 'Pbrt Mirror'

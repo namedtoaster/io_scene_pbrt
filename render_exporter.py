@@ -7,6 +7,8 @@ import mathutils
 from mathutils import Vector
 import shutil
 import struct
+from glob import iglob
+from pathlib import Path
 
 # Simple wrapper on IO to handle indentation
 class PBRTWriter: 
@@ -477,6 +479,52 @@ def export_pbrt_matte_material (pbrt_file, mat):
        pbrt_file.write(r'"texture %s" "%s"' % ("Kd", kdTextureName))
     else:
         pbrt_file.write(r'"color Kd" [ %s %s %s]' %(mat.Kd[0],mat.Kd[1],mat.Kd[2]))
+
+    pbrt_file.write("\n")
+    return ''
+
+def export_pbrt_cloth_material (pbrt_file, mat):
+    print('Currently exporting Pbrt Cloth material')
+    print (mat.name)
+
+    """ kdTextureName = ""
+    kdTextureName = export_texture_from_input(pbrt_file,mat.inputs[0],mat, False) """
+
+    BTF_path = bpy.path.abspath(mat.BTF)
+
+    materialTexProperties = []
+    uscale = str(mat['UScale'])
+    vscale = str(mat['VScale'])
+
+    # Write out the "base" texture as Kd
+    writeTex = 'Texture "Kd" "color" "imagemap" "string filename" [ "textures/00000 tl000 pl000 tv000 pv000.png" ] "float uscale" [' + uscale + '] "float vscale" [' + vscale + ']\n'
+    pbrt_file.write(writeTex)
+
+    for filename in iglob(BTF_path + os.path.join("**", "*.png"), recursive=True):
+        tmp = filename.split(os.path.sep)
+        file = tmp[len(tmp) - 1]
+        fileNoExt = file.split(".")[0].replace(" ", "")
+        fileNoSampleNum = "tl" + fileNoExt.split("tl")[1]
+        new_file = "textures/" + file
+        writeFile = 'Texture "%s" "color" "imagemap" "string filename" [ "%s" ] "float uscale" [%s] "float vscale" [%s]\n' % (fileNoSampleNum, new_file, uscale, vscale)
+        pbrt_file.write(writeFile)
+
+        materialTexProperties.append(f'"texture {fileNoSampleNum}" [ "{fileNoSampleNum}" ]')
+
+    pbrt_file.write(r'Material "cloth"' + "\n\n")
+
+    # Now load the Kd "base" texture into the cloth material class
+    pbrt_file.write('"texture Kd" [ "Kd" ]\n')
+
+    for property in materialTexProperties:
+        pbrt_file.write(f'{property}\n')
+
+    print("TESTING TESTING TESTING try")
+    
+    """ if kdTextureName != "" :
+       pbrt_file.write(r'"texture %s" "%s"' % ("Kd", kdTextureName))
+    else:
+        pbrt_file.write(r'"color Kd" [ %s %s %s]' %(mat.Kd[0],mat.Kd[1],mat.Kd[2])) """
 
     pbrt_file.write("\n")
     return ''
@@ -1163,6 +1211,8 @@ def export_material(pbrt_file, object, slotIndex):
                         currentMaterial =  node_links.from_node
                         print("Current mat id name:")
                         print(currentMaterial.bl_idname)
+                        if currentMaterial.bl_idname == 'CustomNodeTypeCloth':
+                            export_pbrt_cloth_material(pbrt_file,currentMaterial)
                         if currentMaterial.bl_idname == 'CustomNodeTypeMatte':
                             export_pbrt_matte_material(pbrt_file,currentMaterial)
                         if currentMaterial.bl_idname == 'CustomNodeTypeMirror':
